@@ -1,3 +1,6 @@
+using System.Net;
+using System.Text.Json;
+
 namespace CountryServices;
 
 /// <summary>
@@ -8,8 +11,6 @@ public class CountryService : ICountryService
 {
     private const string ServiceUrl = "https://restcountries.com/v2";
 
-    private readonly Dictionary<string, WeakReference<LocalCurrency>> currencyCountries = [];
-
     /// <summary>
     /// Gets information about currency by country code synchronously.
     /// </summary>
@@ -19,8 +20,27 @@ public class CountryService : ICountryService
     /// <exception cref="ArgumentException">Throw if countryCode is null, empty, whitespace or invalid country code.</exception>
     public LocalCurrency GetLocalCurrencyByAlpha2Or3Code(string? alpha2Or3Code)
     {
-        // TODO: Use WebClient and JsonSerializer classes.
-        throw new NotImplementedException();
+        try
+        {
+            string urlString = $"{ServiceUrl}/alpha/{alpha2Or3Code}?fields=name,currencies";
+            var url = new Uri(urlString);
+
+            using WebClient client = new WebClient();
+            string response = client.DownloadString(url);
+            var currencyInfo = JsonSerializer.Deserialize<LocalCurrencyInfo>(response);
+
+            var currency = new LocalCurrency
+            {
+                CountryName = currencyInfo?.CountryName,
+                CurrencyCode = currencyInfo?.Currencies?[0].Code,
+                CurrencySymbol = currencyInfo?.Currencies?[0].Symbol,
+            };
+            return currency;
+        }
+        catch (Exception)
+        {
+            throw new ArgumentException("argument is invalid");
+        }
     }
 
     /// <summary>
@@ -33,8 +53,29 @@ public class CountryService : ICountryService
     /// <exception cref="ArgumentException">Throw if countryCode is null, empty, whitespace or invalid country code.</exception>
     public async Task<LocalCurrency> GetLocalCurrencyByAlpha2Or3CodeAsync(string? alpha2Or3Code, CancellationToken token)
     {
-        // TODO: Use HttpClient and JsonSerializer classes. Notice the difference from WebClient class. In the future, in a similar situation, use only HttpClient.
-        throw new NotImplementedException();
+        try
+        {
+            string urlString = $"{ServiceUrl}/alpha/{alpha2Or3Code}/?fields=name,currencies";
+            var url = new Uri(urlString);
+
+            using HttpClient client = new HttpClient();
+            var response = await client.GetAsync(url, token);
+            _ = response.EnsureSuccessStatusCode();
+
+            using var stream = await response.Content.ReadAsStreamAsync(token);
+            var currencyInfo = await JsonSerializer.DeserializeAsync<LocalCurrencyInfo>(stream, cancellationToken: token);
+            var currency = new LocalCurrency
+            {
+                CountryName = currencyInfo?.CountryName,
+                CurrencyCode = currencyInfo?.Currencies?[0].Code,
+                CurrencySymbol = currencyInfo?.Currencies?[0].Symbol,
+            };
+            return currency;
+        }
+        catch (Exception)
+        {
+            throw new ArgumentException("argument is null");
+        }
     }
 
     /// <summary>
@@ -45,8 +86,30 @@ public class CountryService : ICountryService
     /// <exception cref="ArgumentException">Throw if the capital name is null, empty, whitespace or nonexistent.</exception>
     public Country GetCountryInfoByCapital(string? capital)
     {
-        // TODO: Use WebClient and JsonSerializer classes.
-        throw new NotImplementedException();
+        try
+        {
+            string urlString = $"{ServiceUrl}/capital/{capital}";
+            var url = new Uri(urlString);
+
+            using WebClient client = new WebClient();
+            string response = client.DownloadString(url);
+            var countryInfoArray = JsonSerializer.Deserialize<CountryInfo[]>(response);
+            var country = new Country
+            {
+                Name = countryInfoArray?[0].Name,
+                CapitalName = countryInfoArray?[0].CapitalName,
+#pragma warning disable
+                Area = countryInfoArray[0].Area,
+                Population = countryInfoArray[0].Population,
+                Flag = countryInfoArray?[0].Flag,
+#pragma warning enable
+            };
+            return country;
+        }
+        catch (Exception)
+        {
+            throw new ArgumentException("argument is invalid");
+        }
     }
 
     /// <summary>
@@ -58,7 +121,32 @@ public class CountryService : ICountryService
     /// <exception cref="ArgumentException">Throw if the capital name is null, empty, whitespace or nonexistent.</exception>
     public async Task<Country> GetCountryInfoByCapitalAsync(string? capital, CancellationToken token)
     {
-        // TODO: Use HttpClient and JsonSerializer classes. Notice the difference from WebClient class. In the future, in a similar situation, use only HttpClient.
-        throw new NotImplementedException();
+        try
+        {
+            string urlString = $"{ServiceUrl}/capital/{capital}";
+            var url = new Uri(urlString);
+
+            using HttpClient client = new HttpClient();
+            var response = await client.GetAsync(url, token);
+            _ = response.EnsureSuccessStatusCode();
+
+            using var stream = await response.Content.ReadAsStreamAsync(token);
+            var countryInfoArray = await JsonSerializer.DeserializeAsync<CountryInfo[]>(stream, cancellationToken: token);
+            var country = new Country
+            {
+                Name = countryInfoArray?[0].Name,
+                CapitalName = countryInfoArray?[0].CapitalName,
+#pragma warning disable
+                Area = countryInfoArray[0].Area,
+                Population = countryInfoArray[0].Population,
+                Flag = countryInfoArray?[0].Flag,
+#pragma warning enable
+            };
+            return country;
+        }
+        catch (Exception)
+        {
+            throw new ArgumentException("argument is invalid");
+        }
     }
 }
